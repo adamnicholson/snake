@@ -1,0 +1,224 @@
+<html>
+<body>
+
+<canvas id="canvas" width="400px" height="400px"></canvas>
+
+
+<script>
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+    var width = 400;
+    var height = 400;
+    var gridEnabled = false;
+    var ticker = false;
+
+    var squareRealWidth = 50;
+    var squareRealHeight = 50;
+
+    var direction = 0;
+
+    var gridSize = {
+        x: width / squareRealWidth,
+        y: height / squareRealHeight
+    };
+
+    var snake = [{
+        x: Math.floor(gridSize.x / 2),
+        y: Math.floor(gridSize.y / 2)
+    }];
+
+    snake.containsPos = function (pos) {
+        var snakeMap = snake.map(function (pos) {
+            return 'x'+pos.x+'y'+pos.y;
+        });
+        return snakeMap.indexOf('x'+pos.x+'y'+pos.y) >= 0;
+    };
+
+    var apple = null;
+
+    function getRealXY(pos) {
+        return {
+            x: pos.x * squareRealWidth,
+            y: pos.y * squareRealHeight
+        }
+    }
+
+    function getRandomFreeSquare() {
+        var square = {
+            x: Math.floor(Math.random() * gridSize.x),
+            y: Math.floor(Math.random() * gridSize.y)
+        };
+        var attempts = 1;
+        while (snake.containsPos(square)) {
+
+            if (attempts >= 100) {
+                // @todo Be smarter here than forcing 100 attempts
+                throw new RangeError('No cubes left');
+            }
+
+            square = {
+                x: Math.floor(Math.random() * gridSize.x),
+                y: Math.floor(Math.random() * gridSize.y)
+            };
+            attempts ++;
+        }
+
+        return square;
+    }
+
+    // Fill the background
+    ctx.fillStyle = '#e5e5e5';
+    ctx.fillRect(0, 0, height, width);
+
+    function draw() {
+
+        // draw snake
+        for (var x = 0; x <= gridSize.x; x++) {
+            for (var y = 0; y <= gridSize.y; y++) {
+                var pos = {x: x, y: y};
+
+                var squareRealPos = getRealXY(pos);
+
+                if (snake.containsPos(pos)) {
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(squareRealPos.x, squareRealPos.y, squareRealWidth, squareRealWidth);
+                } else {
+                    ctx.fillStyle = '#e5e5e5';
+                    ctx.fillRect(squareRealPos.x, squareRealPos.y, squareRealWidth, squareRealWidth);
+                }
+            }
+        }
+
+        // draw apple
+        if (apple) {
+            ctx.fillStyle = 'yellow';
+            var appleRealPos = getRealXY(apple);
+            ctx.fillRect(appleRealPos.x, appleRealPos.y, squareRealWidth, squareRealHeight);
+        }
+
+        // draw grid
+        if (gridEnabled) {
+            ctx.strokeStyle = '#ccc';
+            for (var x=0; x <= width; x += squareRealWidth) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            for (var y=0; y <= width; y += squareRealHeight) {
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+        }
+    }
+
+    function tick() {
+
+        var head = snake[0];
+
+        var newCubePos = {
+            x: head.x,
+            y: head.y
+        };
+
+        switch (direction) {
+            case 0:
+                // left
+                newCubePos.x--;
+                break;
+            case 1:
+                // up
+                newCubePos.y--;
+                break;
+            case 2:
+                // right
+                newCubePos.x++;
+                break;
+            case 3:
+                // down
+                newCubePos.y++;
+                break;
+            default:
+                throw Error('Unknown direction ' + direction)
+        }
+
+        // eat self - die
+        if (snake.containsPos(newCubePos)) {
+            clearInterval(ticker);
+            ticker = false;
+            alert('died! dont eat yourself');
+            return;
+        }
+
+        // hit side - die
+        if (newCubePos.x < 0 || newCubePos.x >= gridSize.x || newCubePos.y < 0 || newCubePos.y >= gridSize.y) {
+            clearInterval(ticker);
+            ticker = false;
+            alert('died! stay within the lines');
+            return;
+        }
+
+        // Add the head
+        snake.unshift(newCubePos);
+
+        // eat the apple
+        if (apple && (apple.x === newCubePos.x && apple.y === newCubePos.y)) {
+            apple = null;
+        } else {
+            snake.pop();
+        }
+
+        // did we win?!
+        try {
+            getRandomFreeSquare();
+        } catch (e) {
+            if (e instanceof RangeError) {
+                draw();
+                console.log('you won!');
+                return;
+            }
+        }
+
+        // make a new apple
+        if (!apple) {
+            apple = getRandomFreeSquare();
+        }
+
+        draw();
+    }
+
+
+    document.addEventListener('keydown', function (key) {
+        switch (key.keyCode) {
+            case 37:
+                // left
+                direction = 0;
+                break;
+            case 38:
+                // up
+                direction = 1;
+                break;
+            case 39:
+                // right
+                direction = 2;
+                break;
+            case 40:
+                // down
+                direction = 3;
+                break;
+            default:
+                return;
+        }
+
+        if (!ticker) {
+            // Start the game
+            ticker = setInterval('tick()', 1000 / 10);
+        }
+    });
+
+    draw();
+
+</script>
+
+</body>
+</html>
