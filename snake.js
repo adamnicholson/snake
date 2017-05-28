@@ -1,4 +1,4 @@
-var Snake = function (options) {
+Snake = function (options) {
 
     var game = this;
 
